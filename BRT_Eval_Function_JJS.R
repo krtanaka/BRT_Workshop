@@ -14,19 +14,19 @@ library(gbm)
 eval_CV_BRT_Balanced<- function(dataInput, gbm.x, gbm.y, lr=lr, tc=tc, family=family,bag.fraction=bag.fraction, n.folds=n.folds){
   DataInput <- dataInput
   if(family=="bernoulli"){
-    DataInput_bound_Positive  <- floor((nrow(DataInput[DataInput$gbm.y==1,])/4)*3) #define % of training and test set, by pres/abs
-    DataInput_bound_Zero <- floor((nrow(DataInput[DataInput$gbm.y==0,])/4)*3) #define % of training and test set, by pres/abs
-    DataInput_Positive<-DataInput[DataInput$gbm.y==1,]
-    DataInput_Zero<-DataInput[DataInput$gbm.y==0,]
+    DataInput_Positive_Loc<- which(DataInput[,c(gbm.y)]==1)
+    DataInput_Positive<-DataInput[DataInput_Positive_Loc,]
+    DataInput_Zero_Loc<- which(DataInput[,c(gbm.y)]==0)
+    DataInput_Zero<-DataInput[DataInput_Zero_Loc,]
+    DataInput_bound_Positive  <- floor((nrow(DataInput_Positive)/4)*3) #define % of training and test set, 75/25 here
+    DataInput_bound_Zero <- floor((nrow(DataInput_Zero)/4)*3) #define % of training and test set
     DataInput_train_Positive<- DataInput_Positive[sample(nrow(DataInput_Positive),DataInput_bound_Positive),]
-    DataInput_train_Zero<- DataInput[sample(nrow(DataInput_Zero),DataInput_bound_Zero),]
+    DataInput_train_Zero<- DataInput_Zero[sample(nrow(DataInput_Zero),DataInput_bound_Zero),]
     DataInput_train<-rbind(DataInput_train_Positive, DataInput_train_Zero)
     DataInput_test<- sqldf('SELECT * FROM DataInput EXCEPT SELECT * FROM DataInput_train')#this pulls the unsampled group
     #the function that really runs/generates the BRT 
     
-    DataInput.kfolds <- gbm.step(data=DataInput_train, gbm.x= gbm.x, gbm.y = gbm.y, 
-                                 family=family, tree.complexity=tc,
-                                 learning.rate = lr, bag.fraction=bag.fraction, n.folds=n.folds) 
+    DataInput.kfolds <- gbm.step(data=DataInput_train, gbm.x= gbm.x, gbm.y = gbm.y, family=family, tree.complexity=tc, learning.rate = lr, bag.fraction=bag.fraction, n.folds=n.folds) 
     #predict the test set to evaluate performance
     preds <- predict.gbm(DataInput.kfolds, DataInput_test,
                          n.trees=DataInput.kfolds$gbm.call$best.trees, type="response")
@@ -114,7 +114,7 @@ eval_CV_BRT_Balanced_Fixed<- function(dataInput, gbm.x, gbm.y, lr=lr, tc=tc, fam
 }
 
 #Function that generates an ensemble of models using iterative splits 
-fit.brt.n_eval_Balanced <- function(data, gbm.x, gbm.y, lr,tc,family, bag.fraction=bag.fraction, n.folds=n.folds, iterations){
+fit.brt.n_eval_Balanced <- function(data, gbm.x, gbm.y, lr,tc,family, bag.fraction, n.folds, iterations){
   Species_Models <- vector("list",iterations)
   Species_Models_Eval <- vector("list",iterations)
   
