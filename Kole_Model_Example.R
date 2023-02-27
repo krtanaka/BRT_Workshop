@@ -72,6 +72,9 @@ print(summary(Model_PA_Eval[,1]))
 print(summary(Model_PA_Eval[,2]))
 
 
+
+#recalculate variable importance for the reduced model
+#
 var_tested<-names(df[,Reduced_Predictors])
 
 percent_contrib<-NULL
@@ -147,16 +150,19 @@ for(y in Num_Preds){
 df_pres<-df[df$PA==1,]
 df_pres$Log_Abund<-log(df_pres$CTST)
 Response<-which(colnames(df_pres) %in% c("Log_Abund") )
+
+#fit model to all predictors
 Abund_Model_Step<-fit.brt.n_eval_Balanced(df_pres, gbm.x=Predictors, gbm.y= c(Response), lr=0.001, tc=3, family = "gaussian",bag.fraction=0.75, n.folds=5, 5)
 
 Abund_Model<-Abund_Model_Step[[1]]
 
-
+#check model fit for R2 and RMSE 
 Model_Evals_Abund<- data.frame(matrix(unlist(Abund_Model_Step[[2]]), nrow=length(Abund_Model_Step[[2]]), byrow=TRUE))
 colnames(Model_Evals_Abund)<-c("R2","RMSE")
 
 print(summary(Model_Evals_Abund[,1]))
 print(summary(Model_Evals_Abund[,2]))
+
 
 #now reduce to 'non-random' predictors
 var_tested<-names(df_pres[,Predictors])
@@ -191,8 +197,11 @@ Abund_Model<-Abund_Model_Reduced[[1]]
 Model_Evals_Abund<- data.frame(matrix(unlist(Abund_Model_Reduced[[2]]), nrow=length(Abund_Model_Reduced[[2]]), byrow=TRUE))
 colnames(Model_Evals_Abund)<-c("R2","RMSE")
 
+print(summary(Model_Evals_Abund[,1]))
+print(summary(Model_Evals_Abund[,2]))
 
 
+#plot variable importance and partial dependence plots.
 
 var_tested<-names(df_pres[,Reduced_Predictors])
 
@@ -278,8 +287,4 @@ Abund_Estimates<-rowMeans(PA_Predictions,na.rm=T)
 df<-cbind(df, PA_Estimates, Abund_Estimates)
 df$Hurdle_Estimate<-df$PA_Estimates*df$Abund_Estimates
 
-dev.new()
-par(mfrow=c(1,1))
-plot(df$CTST,exp(df$Hurdle_Estimate))
-cor(df$CTST,exp(df$Hurdle_Estimate))
 cor.test(df$CTST,exp(df$Hurdle_Estimate))
